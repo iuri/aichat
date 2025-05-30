@@ -1,0 +1,8 @@
+beautifulsoup4
+chromadb
+faiss-cpu
+flask
+playwright
+pypickle
+python-dotenv
+sentence_transformers
