@@ -87,7 +87,7 @@ def run_curl(to_number, text):
     curl_command = [
         "curl",
         "-X", "POST", "https://messages-sandbox.nexmo.com/v1/messages",
-        "-u", " 4d4e06f2:7S2bJ36ZFjOP8xXS",        
+        "-u", f"{VONAGE_API_KEY}:{VONAGE_API_TOKEN}",        
         "-H", "Content-Type: application/json",
         "-H", "Accept: application/json",
         "-d", data
