@@ -15,6 +15,10 @@ import faiss
 visited = set()
 crawled_data = {}
 
+DATA_DIR = "data"
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
+
 def is_internal_link(link, base_domain):
     parsed_link = urlparse(link)
     return parsed_link.netloc == "" or base_domain in parsed_link.netloc
@@ -64,16 +68,15 @@ def crawl_website(start_url, max_pages=20):
     return crawled_data
 
 
-def get_text_from_url(url):
+def get_text_from_url(url, filename="knowledge_base.txt"):
     # Start crawling
     knowledge_base = crawl_website(url, max_pages=10)
 
     # Save knowledge base to a file
-    with open("amx_knowledge_base.txt", "w", encoding="utf-8") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         for url, text in knowledge_base.items():
             f.write(f"\n\n=== {url} ===\n{text}\n")
-
-    return "amx_knowledge_base.txt"
+    return filename
 
 
 
@@ -96,24 +99,16 @@ def chunk_text(text, chunk_size=500):
     return chunks
 
 
-# Step 3
-def get_embedding(text, model="text-embedding-ada-002"):
-    response = openai.Embedding.create(
-        input=text,
-        model=model
-    )
-    return response['data'][0]['embedding']
 
 
+def create_knowledge_base(url):
+    print("Crawling and embedding completed successfully!")
+    # This script crawls the AMX Healthcare website, extracts text, chunks it, generates embeddings, and stores them in a vector database.
 
-
-
-
-if __name__ == "__main__":
     # Step 1: Extract Content from AMX Healthcare Website
-    filename = "amx_knowledge_base.txt"
+    filename = "knowledge_base.txt"
     if not os.path.exists(filename):
-        filename = get_text_from_url("https://www.amxhealthcare.com/")
+        filename = get_text_from_url(url)
 
     print("Contentsuccessfully retrieved!")
         
@@ -125,7 +120,8 @@ if __name__ == "__main__":
     print(f"Extracted {len(chunks)} chunks from the text.")
     
     # Save for Flask
-    with open("chunks.pkl", "wb") as f:
+    chunks_path = os.path.join(DATA_DIR, "chunks.pkl")
+    with open(chunks_path, "wb") as f:
         pickle.dump(chunks, f)
 
 
@@ -134,29 +130,25 @@ if __name__ == "__main__":
     model = SentenceTransformer('all-MiniLM-L6-v2')
     embeddings = model.encode(chunks)
 
-
-    with open("embeddings.npy", "wb") as f:
+    embeddings_path = os.path.join(DATA_DIR, "embeddings.npy")
+    with open(embeddings_path, "wb") as f:
         np.save(f, embeddings)
 
     # Build and save FAISS index
     index = faiss.IndexFlatL2(embeddings.shape[1])
     index.add(np.array(embeddings).astype("float32"))
-        
-
-
 
     
     # Step 4: Store Chunks + Embeddings in Vector DB
     chroma_client = chromadb.Client()
-    collection = chroma_client.create_collection(name="amx_kb")
-
+    collection = chroma_client.create_collection(name="knowledge_base")
     for chunk, embedding in zip(chunks, embeddings):
         collection.add(documents=[chunk], embeddings=[embedding], ids=[str(uuid.uuid4())])
 
+    print("✅ Knowledge base creation complete!")
 
-
-
-    
+if __name__ == "__main__":
+    create_knowledge_base("https://ajuda.ccxp.com.br/hc/pt-br?_ga=2.259963213.657824435.1677606057-1807961880.1649718730")
 
 
 
